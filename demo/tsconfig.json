@@ -3,7 +3,9 @@
         "target": "es5",
         "module": "commonjs",
         "jsx": "react",
-        "strictNullChecks": true,
-        "allowJs": true
-    }
+        "strictNullChecks": true
+    },
+    "include": [
+        "src"
+    ]
 }

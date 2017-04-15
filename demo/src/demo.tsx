@@ -10,15 +10,15 @@ class Demo extends React.Component<{}, {}> {
 
     render() {
         return <st.SplittableTabs>
-            <st.Section title="Tab 1" eventKey={1}>
+            <st.Tab title="Tab 1" eventKey={1}>
                 Tab 1 contents yo!
-            </st.Section>
-            <st.Section title="Tab 2" eventKey={2}>
+            </st.Tab>
+            <st.Tab title="Tab 2" eventKey={2}>
                 Tab 222
-            </st.Section>
-            <st.Section title="Tab 3" eventKey={3}>
+            </st.Tab>
+            <st.Tab title="Tab 3" eventKey={3}>
                 Tab 333333333
-            </st.Section>
+            </st.Tab>
         </st.SplittableTabs>
     }
 

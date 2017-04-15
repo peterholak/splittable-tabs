@@ -36,6 +36,10 @@ module.exports = {
         new webpack.optimize.CommonsChunkPlugin({ name: 'vendors', filename: 'vendor.js' })
     ],
 
+    devServer: {
+        contentBase: __dirname + "/dist"
+    },
+
     // Suppress source-map-support warnings
     node: { fs: "empty", module: "empty" }
 };
