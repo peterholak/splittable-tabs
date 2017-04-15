@@ -1,0 +1,26 @@
+{
+  "name": "splittable-tabs",
+  "version": "1.0.0",
+  "description": "React component with tabs that you can split off into their own separate section",
+  "main": "dist/SplittableTabs.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Peter Holak",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/react": "^15.0.21",
+    "@types/react-dom": "^0.14.23",
+    "awesome-typescript-loader": "^3.1.2",
+    "copy-webpack-plugin": "^4.0.1",
+    "source-map-loader": "^0.2.1",
+    "source-map-support": "^0.4.14",
+    "typescript": "^2.2.2",
+    "webpack": "^2.4.1"
+  },
+  "dependencies": {
+    "prop-types": "^15.5.8",
+    "react": "^15.5.4",
+    "react-dom": "^15.5.4"
+  }
+}
