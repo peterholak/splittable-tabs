@@ -6,7 +6,8 @@ module.exports = {
         bundle: './src/demo.tsx',
         vendors: [
             'react',
-            'react-dom'
+            'react-dom',
+            'react-dnd'
         ]
     },
 

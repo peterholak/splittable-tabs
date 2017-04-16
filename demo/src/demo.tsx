@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 class Demo extends React.Component<{}, {}> {
 
     render() {
-        return <st.SplittableTabs>
+        return <st.SplittableTabs style={{width: 600, height: 600}}>
             <st.Tab title="Tab 1" eventKey={1}>
                 Tab 1 contents yo!
             </st.Tab>

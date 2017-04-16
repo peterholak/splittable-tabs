@@ -18,7 +18,8 @@ export type TabKey = string|number
 export type TabsByKey = {[key: string]: TabProps}
 
 export interface Props {
-    children?: React.ReactNode
+    children?: React.ReactNode,
+    style?: React.CSSProperties
 }
 
 export interface State {
@@ -40,8 +41,7 @@ export class SplittableTabs extends React.Component<Props, State> {
     render() {
         
         const tabsByKey = this.getTabsByKey()
-        return <div>
-            <h1>Zones</h1>
+        return <div style={{ ...styles.borders, ...styles.component, ...this.props.style }}>
             {this.state.zones.map((z, index) =>
                 this.renderZone(tabsByKey, z, index))
             }
@@ -56,10 +56,10 @@ export class SplittableTabs extends React.Component<Props, State> {
             key
         ))
         const contents = tabsByKey[zone.activeKey].children
-        return <div key={index}>
+        return <div key={index} style={{...styles.borders, ...styles.zone, flexGrow: zone.sizePercent}}>
             <h2>Zone {index}</h2>
-            <div>{tabs}</div>
-            <div>{contents}</div>
+            <div style={styles.borders}>{tabs}</div>
+            <div style={styles.borders}>{contents}</div>
         </div>
     }
 
@@ -76,14 +76,14 @@ export class SplittableTabs extends React.Component<Props, State> {
                 style={styles.split}
                 onClick={e => { this.onSplitClicked(zoneIndex, key); e.stopPropagation() }}
                 >
-                S
+                Split
             </span>
         }else if (zoneIndex > 0) {
             operations = <span
                 style={styles.split}
                 onClick={e => { this.onMergeClicked(zoneIndex, key); e.stopPropagation() }}
                 >
-                M0
+                MergeTo0
             </span>
         }
 
@@ -221,7 +221,8 @@ const styles: {[key: string]: React.CSSProperties} = {
     tab: {
         display: 'inline-block',
         padding: '10px',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        userSelect: 'none'
     },
 
     activeTab: {
@@ -232,5 +233,19 @@ const styles: {[key: string]: React.CSSProperties} = {
     split: {
         textDecoration: 'underline',
         color: "#00f"
+    },
+
+    borders: {
+        border: '1px dotted #ccc'
+    },
+
+    component: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch'
+    },
+
+    zone: {
+        
     }
 }
