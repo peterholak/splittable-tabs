@@ -1,5 +1,4 @@
 import * as React from 'react'
-import * as PropTypes from 'prop-types'
 
 export interface TabProps {
     title: string
@@ -22,13 +21,28 @@ export interface Props {
     style?: React.CSSProperties
 }
 
+export interface XY { x: number, y: number }
+const XY0 = { x: 0, y: 0 }
+
+export interface MouseInteraction {
+    tabDown: TabKey|undefined
+    offset: XY
+    touchStart: XY,
+    tabOverZone?: number
+}
+
 export interface State {
-    zones: Zone[]
+    zones: Zone[],
+    mouse: MouseInteraction
 }
 
 export class SplittableTabs extends React.Component<Props, State> {
 
-    state: State = { zones: [] }
+    state: State = {
+        zones: [],
+        mouse: { tabDown: undefined, offset: XY0, touchStart: XY0 }
+    }
+    zoneTabArea: {[index: number]: HTMLDivElement} = {}
 
     componentWillMount() {
         this.recalculateZones(this.props)
@@ -41,7 +55,12 @@ export class SplittableTabs extends React.Component<Props, State> {
     render() {
         
         const tabsByKey = this.getTabsByKey()
-        return <div style={{ ...styles.borders, ...styles.component, ...this.props.style }}>
+        return <div
+            onMouseLeave={this.onComponentMouseLeave.bind(this)}
+            onMouseMove={this.onComponentMouseMove.bind(this)}
+            onMouseUp={this.onComponentMouseUp.bind(this)}
+            style={{ ...styles.borders, ...styles.component, ...this.props.style }}
+        >
             {this.state.zones.map((z, index) =>
                 this.renderZone(tabsByKey, z, index))
             }
@@ -55,42 +74,51 @@ export class SplittableTabs extends React.Component<Props, State> {
             index,
             key
         ))
+        const style = { ...styles.borders, ...styles.zone, flexGrow: zone.sizePercent }
+        const tabBarStyle = {
+            ...styles.borders,
+            ...(this.state.mouse.tabOverZone === index ? styles.hoverZone : undefined)
+        }
         const contents = tabsByKey[zone.activeKey].children
-        return <div key={index} style={{...styles.borders, ...styles.zone, flexGrow: zone.sizePercent}}>
+        return <div key={index} style={style}>
             <h2>Zone {index}</h2>
-            <div style={styles.borders}>{tabs}</div>
+            <div ref={area => this.zoneTabArea[index] = area} style={tabBarStyle}>{tabs}</div>
             <div style={styles.borders}>{contents}</div>
         </div>
     }
 
     renderTab(title: string, zone: Zone, zoneIndex: number, key: TabKey) {
 
-        const style = (key === zone.activeKey ?
+        let style = (key === zone.activeKey ?
             { ...styles.tab, ...styles.activeTab } :
             styles.tab
         )
 
-        let operations: JSX.Element|undefined = undefined
+        if (this.state.mouse.tabDown === key) {
+            const offset = this.state.mouse.offset
+            style = { ...style, ...styles.pressedTab, position: 'relative', left: offset.x, top: offset.y }
+        }
+
+        return <div
+            key={key}
+            style={style}
+            onMouseDown={(e) => this.onTabMouseDown(e, key)}
+        >
+            {title} {this.renderTabOperations(zone, zoneIndex, key)}
+        </div>
+
+    }
+
+    renderTabOperations(zone: Zone, zoneIndex: number, key: TabKey) {
         if (zone.tabs.length > 1) {
-            operations = <span
+            return <span
                 style={styles.split}
                 onClick={e => { this.onSplitClicked(zoneIndex, key); e.stopPropagation() }}
                 >
                 Split
             </span>
-        }else if (zoneIndex > 0) {
-            operations = <span
-                style={styles.split}
-                onClick={e => { this.onMergeClicked(zoneIndex, key); e.stopPropagation() }}
-                >
-                MergeTo0
-            </span>
         }
-
-        return <div key={key} style={style} onClick={() => this.onTabClicked(zoneIndex, key)}>
-            {title} {operations}
-        </div>
-
+        return undefined
     }
 
     recalculateZones(nextProps: Props) {
@@ -126,7 +154,8 @@ export class SplittableTabs extends React.Component<Props, State> {
         this.setState({ zones: nextZones })
     }
 
-    onTabClicked(zoneIndex: number, key: TabKey) {
+    setActiveTab(key: TabKey) {
+        const zoneIndex = this.zoneIndexForTab(key)
         const nextZones = [ ...this.state.zones ]
         const zone = this.state.zones[zoneIndex]
         nextZones[zoneIndex] = {
@@ -135,6 +164,58 @@ export class SplittableTabs extends React.Component<Props, State> {
             sizePercent: zone.sizePercent
         }
         this.setState({ zones: nextZones })
+    }
+
+    resetTabDrag() {
+        this.setState({ mouse: { tabDown: undefined, offset: XY0, touchStart: XY0 } })
+    }
+
+    onComponentMouseLeave() {
+        this.resetTabDrag()
+    }
+
+    onComponentMouseMove(e: React.MouseEvent<any>) {
+        if (this.state.mouse.tabDown === undefined) { return }
+
+        let tabOverZone: number|undefined = undefined
+        for (let i=0; i<this.state.zones.length; i++) {
+            const rect = this.zoneTabArea[i].getBoundingClientRect()
+            if (e.clientX > rect.left && e.clientY > rect.top && e.clientX < rect.right && e.clientY < rect.bottom) {
+                tabOverZone = i
+                break
+            }
+        }
+
+        const start = this.state.mouse.touchStart
+        this.setState({ mouse: {
+            tabDown: this.state.mouse.tabDown,
+            offset: { x: e.clientX - start.x, y: e.clientY - start.y },
+            touchStart: start,
+            tabOverZone
+        }})
+    }
+
+    onComponentMouseUp() {
+        if (this.state.mouse.tabDown === undefined) { return }
+
+        if (this.state.mouse.tabOverZone !== undefined) {
+            const zoneIndex = this.state.mouse.tabOverZone
+            const tabKey = this.state.mouse.tabDown
+            this.mergeIntoZone(zoneIndex, tabKey, () => {
+                this.setActiveTab(tabKey)
+            })
+        }
+        return this.resetTabDrag()
+    }
+
+    onTabMouseDown(e: React.MouseEvent<any>, key: TabKey) {
+        this.setActiveTab(key)
+        this.setState({ mouse: {
+            tabDown: key,
+            offset: this.state.mouse.offset,
+            touchStart: { x: e.clientX, y: e.clientY }
+        } })
+        e.preventDefault()
     }
 
     onSplitClicked(zoneIndex: number, key: TabKey) {
@@ -155,30 +236,34 @@ export class SplittableTabs extends React.Component<Props, State> {
         this.setState({ zones: nextZones })
     }
 
-    onMergeClicked(zoneIndex: number, key: TabKey) {
-        const oldZone = this.state.zones[zoneIndex]
-        const zone0 = this.state.zones[0]
+    mergeIntoZone(zoneIndex: number, key: TabKey, callback?: () => any) {
+        const oldIndex = this.zoneIndexForTab(key)
+        if (oldIndex === zoneIndex) { return }
+        const oldZone = this.state.zones[oldIndex]
+        const newZone = this.state.zones[zoneIndex]
         const removingOldZone = oldZone.tabs.length === 1
 
         const nextZones = this.state.zones.filter(z =>
             !removingOldZone || z !== oldZone
         )
 
-        nextZones[0] = {
-            activeKey: zone0.activeKey,
-            tabs: [ ...zone0.tabs, key ],
-            sizePercent: zone0.sizePercent + (removingOldZone ? oldZone.sizePercent : 0)
+        const newZoneIndex = zoneIndex - (removingOldZone && zoneIndex > oldIndex ? 1 : 0)
+
+        nextZones[newZoneIndex] = {
+            activeKey: newZone.activeKey,
+            tabs: [ ...newZone.tabs, key ],
+            sizePercent: newZone.sizePercent + (removingOldZone ? oldZone.sizePercent : 0)
         }
 
         if (!removingOldZone) {
-            nextZones[zoneIndex] = {
+            nextZones[oldIndex] = {
                 activeKey: this.activeKeyAfterTabRemoval(oldZone.tabs, oldZone.activeKey, key),
                 tabs: oldZone.tabs.filter(k => k !== key),
                 sizePercent: oldZone.sizePercent
             }
         }
 
-        this.setState({ zones: nextZones })
+        this.setState({ zones: nextZones }, callback)
     }
 
     activeKeyAfterTabRemoval(previousTabs: TabKey[], activeKey: TabKey, removedKey: TabKey) {
@@ -225,6 +310,10 @@ const styles: {[key: string]: React.CSSProperties} = {
         userSelect: 'none'
     },
 
+    pressedTab: {
+        background: '#faa'
+    },
+
     activeTab: {
         border: '1px solid #000',
         borderBottom: 'none'
@@ -247,5 +336,9 @@ const styles: {[key: string]: React.CSSProperties} = {
 
     zone: {
         
+    },
+
+    hoverZone: {
+        background: '#cfc'
     }
 }
