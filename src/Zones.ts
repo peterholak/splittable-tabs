@@ -14,20 +14,24 @@ export interface Zone {
     tabs: TabKey[]
 }
 
-/** Performs the immutable updates to zones */
+/** Performs the immutable updates to zones. */
 export class Zones {
     constructor(public data: Zone[] = []) { }
 
+    /**
+     * Deals with changes to the tab structure, most likely caused by updating the props
+     * (when tabs may have been changed/added/removed/etc.).
+     */
     recalculate(tabsByKey: TabsByKey): Zones {
 
         const newTabs = this.tabsWithoutZones(Object.keys(tabsByKey))
         const nextZones: Zone[] = []
 
         this.data.forEach((zone, index) => {
-            // Tabs which no longer exist in nextProps.children will be filtered out
+            // Tabs which no longer exist in nextProps.children will be filtered out.
             const withoutDeadTabs = zone.tabs.filter(key => tabsByKey[key] !== undefined)
 
-            // Add any new tabs (newly added to nextProps.children) to the first zone
+            // Add any new tabs (newly added to nextProps.children) to the first zone.
             const addedTabs = (index === 0 ? newTabs : [])
 
             if (addedTabs.length === 0 && withoutDeadTabs.length === zone.tabs.length) {
@@ -39,10 +43,10 @@ export class Zones {
                     sizePercent: zone.sizePercent
                 }
             }
-            // If there would be zero tabs in this zone, we just skip it (TODO: normalize sizePercent)
+            // If there would be zero tabs in this zone, we just skip it (TODO: normalize sizePercent).
         })
 
-        // If there were zero zones before, let's just create a new one with all the new tabs (if any)
+        // If there were zero zones before, let's just create a new one with all the new tabs (if any).
         if (nextZones.length === 0 && newTabs.length > 0) {
             nextZones.push({ activeKey: newTabs[0], tabs: newTabs, sizePercent: 100 })
         }
@@ -56,6 +60,7 @@ export class Zones {
         )
     }
 
+    /** Removes a tab from its zone and places it into a newly created zone at the end. */
     splitOff(key: TabKey): Zones {
         const oldIndex = this.indexForTab(key)
         const oldZone = this.data[oldIndex]
@@ -75,6 +80,7 @@ export class Zones {
         return new Zones(nextZones)
     }
 
+    /** Removes a tab from its zone and places it at the end of the zone specified by `zoneIndex`. */
     mergeInto(zoneIndex: number, key: TabKey): Zones {
         const oldIndex = this.indexForTab(key)
         if (oldIndex === zoneIndex) { return this }
@@ -112,8 +118,9 @@ export class Zones {
         throw new Error("No zone contains a tab with key '" + key + "'")
     }
 
+    /** Returns the tab that should be activated when a previously active tab was removed from the zone. */
     activeKeyAfterTabRemoval(previousTabs: TabKey[], activeKey: TabKey, removedKey: TabKey) {
-        // TODO: make this work better (pick the closest previous tab, check for zero new tabs, etc.)
+        // TODO: make this work better (pick the closest previous tab, check for zero new tabs, etc.).
         if (activeKey === removedKey) {
             return removedKey === previousTabs[0] ? previousTabs[1] : previousTabs[0]
         }
