@@ -2,18 +2,22 @@
   "name": "splittable-tabs",
   "version": "1.0.0",
   "description": "React component with tabs that you can split off into their own separate section",
-  "main": "dist/SplittableTabs.js",
+  "main": "dist/src/SplittableTabs.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "test": "mocha dist/test"
   },
   "author": "Peter Holak",
   "license": "MIT",
   "devDependencies": {
+    "@types/chai": "^3.5.0",
+    "@types/mocha": "^2.2.40",
     "@types/react": "^15.0.21",
-    "@types/react-dnd": "^2.0.32",
     "@types/react-dom": "^0.14.23",
     "awesome-typescript-loader": "^3.1.2",
+    "chai": "^3.5.0",
     "copy-webpack-plugin": "^4.0.1",
+    "mocha": "^3.2.0",
     "source-map-loader": "^0.2.1",
     "source-map-support": "^0.4.14",
     "typescript": "^2.2.2",
@@ -22,7 +26,6 @@
   "dependencies": {
     "prop-types": "^15.5.8",
     "react": "^15.5.4",
-    "react-dnd": "^2.3.0",
     "react-dom": "^15.5.4"
   }
 }
