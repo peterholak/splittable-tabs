@@ -75,7 +75,7 @@ export class Zones {
         return new Zones(nextZones)
     }
 
-    mergeInto(zoneIndex: number, key: TabKey, callback?: () => any): Zones {
+    mergeInto(zoneIndex: number, key: TabKey): Zones {
         const oldIndex = this.indexForTab(key)
         if (oldIndex === zoneIndex) { return this }
         const oldZone = this.data[oldIndex]

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { TabKey, TabsByKey, TabProps, Zone, Zones } from './Zones'
+import { XY, XY0, MouseInteraction, MouseInteractions, ZoneTabAreas } from './MouseInteraction'
 import styles from './styles'
 
 export const Tab = (props: TabProps) => <div />
@@ -9,28 +10,18 @@ export interface Props {
     style?: React.CSSProperties
 }
 
-export interface XY { x: number, y: number }
-const XY0 = { x: 0, y: 0 }
-
-export interface MouseInteraction {
-    tabDown: TabKey|undefined
-    offset: XY
-    touchStart: XY,
-    tabOverZone?: number
-}
-
 export interface State {
     zones: Zones,
-    mouse: MouseInteraction
+    mouse: MouseInteractions
 }
 
 export class SplittableTabs extends React.Component<Props, State> {
 
     state: State = {
         zones: new Zones(),
-        mouse: { tabDown: undefined, offset: XY0, touchStart: XY0 }
+        mouse: new MouseInteractions()
     }
-    zoneTabArea: {[index: number]: HTMLDivElement} = {}
+    zoneTabArea: ZoneTabAreas = {}
 
     componentWillMount() {
         const tabsByKey = this.getTabsByKey(this.props.children)
@@ -38,7 +29,7 @@ export class SplittableTabs extends React.Component<Props, State> {
     }
 
     componentWillReceiveProps(nextProps: Props) {
-        const tabsByKey = this.getTabsByKey(this.props.children)
+        const tabsByKey = this.getTabsByKey(nextProps.children)
         this.setState({ zones: this.state.zones.recalculate(tabsByKey)})
     }
 
@@ -67,7 +58,7 @@ export class SplittableTabs extends React.Component<Props, State> {
         const style = { ...styles.borders, ...styles.zone, flexGrow: zone.sizePercent }
         const tabBarStyle = {
             ...styles.borders,
-            ...(this.state.mouse.tabOverZone === index ? styles.hoverZone : undefined)
+            ...(this.state.mouse.data.tabOverZone === index ? styles.hoverZone : undefined)
         }
         const contents = tabsByKey[zone.activeKey].children
         return <div key={index} style={style}>
@@ -84,8 +75,8 @@ export class SplittableTabs extends React.Component<Props, State> {
             styles.tab
         )
 
-        if (this.state.mouse.tabDown === key) {
-            const offset = this.state.mouse.offset
+        if (this.state.mouse.data.tabDown === key) {
+            const offset = this.state.mouse.data.offset
             style = { ...style, ...styles.pressedTab, position: 'relative', left: offset.x, top: offset.y }
         }
 
@@ -111,58 +102,35 @@ export class SplittableTabs extends React.Component<Props, State> {
         return undefined
     }
 
-    resetTabDrag() {
-        this.setState({ mouse: { tabDown: undefined, offset: XY0, touchStart: XY0 } })
-    }
-
     onComponentMouseLeave() {
-        this.resetTabDrag()
+        this.setState({ mouse: new MouseInteractions() })
     }
 
     onComponentMouseMove(e: React.MouseEvent<any>) {
-        if (this.state.mouse.tabDown === undefined) { return }
-
-        let tabOverZone: number|undefined = undefined
-        for (let i=0; i<this.state.zones.data.length; i++) {
-            const rect = this.zoneTabArea[i].getBoundingClientRect()
-            if (e.clientX > rect.left && e.clientY > rect.top && e.clientX < rect.right && e.clientY < rect.bottom) {
-                tabOverZone = i
-                break
-            }
-        }
-
-        const start = this.state.mouse.touchStart
-        this.setState({ mouse: {
-            tabDown: this.state.mouse.tabDown,
-            offset: { x: e.clientX - start.x, y: e.clientY - start.y },
-            touchStart: start,
-            tabOverZone
-        }})
+        this.setState({ mouse: this.state.mouse.move(
+            e.clientX, e.clientY, this.zoneTabArea
+        ) })
     }
 
     onComponentMouseUp() {
-        if (this.state.mouse.tabDown === undefined) { return }
+        if (this.state.mouse.data.tabDown === undefined) { return }
 
-        if (this.state.mouse.tabOverZone !== undefined) {
-            const zoneIndex = this.state.mouse.tabOverZone
-            const tabKey = this.state.mouse.tabDown
+        if (this.state.mouse.data.tabOverZone !== undefined) {
+            const zoneIndex = this.state.mouse.data.tabOverZone
+            const tabKey = this.state.mouse.data.tabDown
             this.setState({
                 zones: this.state.zones.
                     mergeInto(zoneIndex, tabKey).
                     setActiveTab(tabKey)
             })
         }
-        return this.resetTabDrag()
+        this.setState({ mouse: new MouseInteractions() })
     }
 
     onTabMouseDown(e: React.MouseEvent<any>, key: TabKey) {
         this.setState({
             zones: this.state.zones.setActiveTab(key),
-            mouse: {
-                tabDown: key,
-                offset: this.state.mouse.offset,
-                touchStart: { x: e.clientX, y: e.clientY }
-            }
+            mouse: this.state.mouse.start(key, e.clientX, e.clientY)
         })
         e.preventDefault()
     }
