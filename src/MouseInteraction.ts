@@ -1,4 +1,4 @@
-import { TabKey } from './Zones'
+import { TabKey, Zones } from './Zones'
 
 export interface XY { x: number, y: number }
 export const XY0 = { x: 0, y: 0 }
@@ -13,29 +13,41 @@ export interface MouseInteraction {
     /** The point where the user initially pressed the mouse button down, in client coordinates. */
     touchStart: XY,
 
+    /** Where the top-left corner of the element was when the user started dragging it. */
+    originalStart: XY,
+
     /** How far the mouse cursor has moved relative to the `touchStart` point. */
     offset: XY
 
     /** The index of the zone over whose "tab bar area" the dragged tab is hovering at the moment. */
     tabOverZone?: number
+
+    hoverPosition?: number
 }
 
 export type ZoneTabAreas = {[index: number]: HTMLElement}
 export type TabElements = {[key: string]: HTMLElement}
 
-const initialMouse = { tabDown: undefined, offset: XY0, touchStart: XY0, dragging: false }
+const initialMouse = {
+    tabDown: undefined,
+    offset: XY0,
+    touchStart: XY0,
+    originalStart: XY0,
+    dragging: false
+}
 const forceToSplitOff = 10
 
 /** Performs the immutable updates to mouse interaction state data (e.g. dragging) */
 export class MouseInteractions {
     constructor(public data: MouseInteraction = initialMouse) { }
 
-    move(x: number, y: number, zoneTabAreas: ZoneTabAreas, tabs: TabElements): MouseInteractions {
+    move(x: number, y: number, zoneTabAreas: ZoneTabAreas, tabs: TabElements, zones: Zones): MouseInteractions {
         if (this.data.tabDown === undefined) { return this }
         const dragging = this.data.dragging || this.shouldStartDragging(x, y)
         if (!dragging) { return this }
 
         const tabOverZone = this.zoneUnderDraggedTab(zoneTabAreas, tabs)
+        const hoverPosition = tabOverZone !== undefined ? this.hoverPosition(x, y, tabOverZone, tabs, zones) : undefined
 
         const start = this.data.touchStart
         return new MouseInteractions({
@@ -43,16 +55,20 @@ export class MouseInteractions {
             dragging: true,
             offset: { x: x - start.x, y: y - start.y },
             touchStart: start,
-            tabOverZone
+            originalStart: this.data.originalStart,
+            tabOverZone,
+            hoverPosition
         })
     }
 
-    start(tab: TabKey, x: number, y: number): MouseInteractions {
+    start(key: TabKey, x: number, y: number, tabs: TabElements): MouseInteractions {
+        const tabRect = tabs[key].getBoundingClientRect()
         return new MouseInteractions({
-            tabDown: tab,
+            tabDown: key,
             dragging: false,
             offset: this.data.offset,
-            touchStart: { x, y }
+            touchStart: { x, y },
+            originalStart: { x: tabRect.left, y: tabRect.top }
         })
     }
 
@@ -79,6 +95,26 @@ export class MouseInteractions {
 
     isDraggingTab(key: TabKey) {
         return this.data.dragging && this.data.tabDown === key
+    }
+
+    hoverPosition(x: number, y: number, zoneIndex: number, tabs: TabElements, zones: Zones): number|undefined {
+        if (!this.data.dragging) { return undefined }
+        const draggedTabRect = tabs[this.data.tabDown!].getBoundingClientRect()
+
+        let selfPositionOffset = 0
+        for (let i=0; i<zones.data[zoneIndex].tabs.length; i++) {
+            const tabKey = zones.data[zoneIndex].tabs[i]
+            if (tabKey === this.data.tabDown) {
+                selfPositionOffset = 1
+                continue
+            }
+
+            const tabRect = tabs[tabKey].getBoundingClientRect()
+            if (x < tabRect.left + tabRect.width/2) {
+                return i - selfPositionOffset
+            }
+        }
+        return zones.data[zoneIndex].tabs.length - selfPositionOffset
     }
 }
 

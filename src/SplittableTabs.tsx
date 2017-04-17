@@ -63,7 +63,7 @@ export class SplittableTabs extends React.Component<Props, State> {
         }
         const contents = tabsByKey[zone.activeKey].children
         return <div key={index} style={style}>
-            <h2>Zone {index}</h2>
+            <h3>Zone {index}</h3>
             <div ref={area => area ? this.zoneTabArea[index] = area : delete this.zoneTabArea[index]} style={tabBarStyle}>
                 {tabs}
             </div>
@@ -80,7 +80,13 @@ export class SplittableTabs extends React.Component<Props, State> {
 
         if (this.state.mouse.isDraggingTab(key)) {
             const offset = this.state.mouse.data.offset
-            style = { ...style, ...styles.pressedTab, position: 'relative', left: offset.x, top: offset.y }
+            style = {
+                ...style,
+                ...styles.pressedTab,
+                position: 'absolute',
+                left: offset.x + this.state.mouse.data.originalStart.x,
+                top: offset.y + this.state.mouse.data.originalStart.y
+            }
         }
 
         return <div
@@ -112,17 +118,18 @@ export class SplittableTabs extends React.Component<Props, State> {
 
     onComponentMouseMove(e: React.MouseEvent<any>) {
         this.setState({ mouse: this.state.mouse.move(
-            e.clientX, e.clientY, this.zoneTabArea, this.tabElements
+            e.clientX, e.clientY, this.zoneTabArea, this.tabElements, this.state.zones
         ) })
     }
 
     onComponentMouseUp() {
         if (this.state.mouse.data.tabOverZone !== undefined) {
             const zoneIndex = this.state.mouse.data.tabOverZone
+            const position = this.state.mouse.data.hoverPosition!
             const tabKey = this.state.mouse.data.tabDown!
             this.setState({
                 zones: this.state.zones.
-                    mergeInto(zoneIndex, tabKey).
+                    mergeInto(zoneIndex, tabKey, position).
                     setActiveTab(tabKey)
             })
         }
@@ -132,7 +139,7 @@ export class SplittableTabs extends React.Component<Props, State> {
     onTabMouseDown(e: React.MouseEvent<any>, key: TabKey) {
         this.setState({
             zones: this.state.zones.setActiveTab(key),
-            mouse: this.state.mouse.start(key, e.clientX, e.clientY)
+            mouse: this.state.mouse.start(key, e.clientX, e.clientY, this.tabElements)
         })
         e.preventDefault()
     }

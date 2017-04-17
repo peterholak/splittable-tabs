@@ -14,6 +14,8 @@ export interface Zone {
     tabs: TabKey[]
 }
 
+export const LastPosition = -1
+
 /** Performs the immutable updates to zones. */
 export class Zones {
     constructor(public data: Zone[] = []) { }
@@ -80,25 +82,37 @@ export class Zones {
         return new Zones(nextZones)
     }
 
-    /** Removes a tab from its zone and places it at the end of the zone specified by `zoneIndex`. */
-    mergeInto(zoneIndex: number, key: TabKey): Zones {
+    /** Removes a tab from its zone and places it into the zone specified by `zoneIndex`. */
+    mergeInto(zoneIndex: number, key: TabKey, position: number = LastPosition): Zones {
         const oldIndex = this.indexForTab(key)
-        if (oldIndex === zoneIndex) { return this }
         const oldZone = this.data[oldIndex]
         const newZone = this.data[zoneIndex]
-        const removingOldZone = oldZone.tabs.length === 1
 
+        const realPosition = (position === LastPosition ?
+            newZone.tabs.length :
+            Math.min(position, newZone.tabs.length)
+        )
+        const oldPosition = this.positionOfTab(oldIndex, key)
+        if (oldIndex === zoneIndex && oldPosition === realPosition) { return this }
+
+        const removingOldZone = oldZone.tabs.length === 1
         const nextZones = this.data.filter(z => !removingOldZone || z !== oldZone)
 
         const newZoneIndex = zoneIndex - (removingOldZone && zoneIndex > oldIndex ? 1 : 0)
 
+        const nextTabs = [ ...newZone.tabs ]
+        if (oldZone === newZone) {
+            nextTabs.splice(oldPosition, 1)
+        }
+        nextTabs.splice(realPosition, 0, key)
+        
         nextZones[newZoneIndex] = {
             activeKey: newZone.activeKey,
-            tabs: [ ...newZone.tabs, key ],
+            tabs: nextTabs,
             sizePercent: newZone.sizePercent + (removingOldZone ? oldZone.sizePercent : 0)
         }
 
-        if (!removingOldZone) {
+        if (!removingOldZone && oldZone !== newZone) {
             nextZones[oldIndex] = {
                 activeKey: this.activeKeyAfterTabRemoval(oldZone.tabs, oldZone.activeKey, key),
                 tabs: oldZone.tabs.filter(k => k !== key),
@@ -115,7 +129,15 @@ export class Zones {
                 return i
             }
         }
-        throw new Error("No zone contains a tab with key '" + key + "'")
+        throw new Error(`No zone contains a tab with key '${key}'.`)
+    }
+
+    positionOfTab(zoneIndex: number, key: TabKey) {
+        const result = this.data[zoneIndex].tabs.indexOf(key)
+        if (result === -1) {
+            throw new Error(`Zone ${zoneIndex} does not contain tab '${key}'.`)
+        }
+        return result
     }
 
     /** Returns the tab that should be activated when a previously active tab was removed from the zone. */
