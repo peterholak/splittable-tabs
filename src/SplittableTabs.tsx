@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { TabKey, TabsByKey, TabProps, Zone, Zones } from './Zones'
-import { XY, XY0, MouseInteraction, MouseInteractions, ZoneTabAreas } from './MouseInteraction'
+import { XY, XY0, MouseInteraction, MouseInteractions, ZoneTabAreas, TabElements } from './MouseInteraction'
 import styles from './styles'
 
 export const Tab = (props: TabProps) => <div />
@@ -22,6 +22,7 @@ export class SplittableTabs extends React.Component<Props, State> {
         mouse: new MouseInteractions()
     }
     zoneTabArea: ZoneTabAreas = {}
+    tabElements: TabElements = {}
 
     componentWillMount() {
         const tabsByKey = this.getTabsByKey(this.props.children)
@@ -63,7 +64,9 @@ export class SplittableTabs extends React.Component<Props, State> {
         const contents = tabsByKey[zone.activeKey].children
         return <div key={index} style={style}>
             <h2>Zone {index}</h2>
-            <div ref={area => this.zoneTabArea[index] = area} style={tabBarStyle}>{tabs}</div>
+            <div ref={area => area ? this.zoneTabArea[index] = area : delete this.zoneTabArea[index]} style={tabBarStyle}>
+                {tabs}
+            </div>
             <div style={styles.borders}>{contents}</div>
         </div>
     }
@@ -75,12 +78,13 @@ export class SplittableTabs extends React.Component<Props, State> {
             styles.tab
         )
 
-        if (this.state.mouse.data.tabDown === key) {
+        if (this.state.mouse.isDraggingTab(key)) {
             const offset = this.state.mouse.data.offset
             style = { ...style, ...styles.pressedTab, position: 'relative', left: offset.x, top: offset.y }
         }
 
         return <div
+            ref={e => e ? this.tabElements[key] = e : delete this.tabElements[key]}
             key={key}
             style={style}
             onMouseDown={(e) => this.onTabMouseDown(e, key)}
@@ -108,16 +112,14 @@ export class SplittableTabs extends React.Component<Props, State> {
 
     onComponentMouseMove(e: React.MouseEvent<any>) {
         this.setState({ mouse: this.state.mouse.move(
-            e.clientX, e.clientY, this.zoneTabArea
+            e.clientX, e.clientY, this.zoneTabArea, this.tabElements
         ) })
     }
 
     onComponentMouseUp() {
-        if (this.state.mouse.data.tabDown === undefined) { return }
-
         if (this.state.mouse.data.tabOverZone !== undefined) {
             const zoneIndex = this.state.mouse.data.tabOverZone
-            const tabKey = this.state.mouse.data.tabDown
+            const tabKey = this.state.mouse.data.tabDown!
             this.setState({
                 zones: this.state.zones.
                     mergeInto(zoneIndex, tabKey).
