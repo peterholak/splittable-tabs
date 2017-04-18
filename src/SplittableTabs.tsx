@@ -41,6 +41,9 @@ export class SplittableTabs extends React.Component<Props, State> {
             onMouseLeave={this.onComponentMouseLeave.bind(this)}
             onMouseMove={this.onComponentMouseMove.bind(this)}
             onMouseUp={this.onComponentMouseUp.bind(this)}
+            onTouchMove={this.onComponentTouchMove.bind(this)}
+            onTouchEnd={this.onComponentTouchEnd.bind(this)}
+            onTouchCancel={this.onComponentTouchEnd.bind(this)}
             style={{ ...styles.borders, ...styles.component, ...this.props.style }}
         >
             {this.state.zones.data.map((z, index) =>
@@ -126,6 +129,7 @@ export class SplittableTabs extends React.Component<Props, State> {
             key={key}
             style={style}
             onMouseDown={(e) => this.onTabMouseDown(e, key)}
+            onTouchStart={(e) => this.onTabTouchStart(e, key)}
         >
             {title} {this.renderTabOperations(zone, zoneIndex, key)}
         </div>
@@ -153,6 +157,15 @@ export class SplittableTabs extends React.Component<Props, State> {
         ) })
     }
 
+    onComponentTouchMove(e: React.TouchEvent<any>) {
+        const touch = e.changedTouches.item(0)
+        this.setState({
+            mouse: this.state.mouse.move(
+                touch.clientX, touch.clientY, this.zoneTabArea, this.tabElements, this.state.zones
+            )
+        })
+    }
+
     onComponentMouseUp() {
         if (this.state.mouse.data.tabOverZone !== undefined) {
             const zoneIndex = this.state.mouse.data.tabOverZone
@@ -167,10 +180,23 @@ export class SplittableTabs extends React.Component<Props, State> {
         this.setState({ mouse: new MouseInteractions() })
     }
 
+    onComponentTouchEnd() {
+        this.onComponentMouseUp()
+    }
+
     onTabMouseDown(e: React.MouseEvent<any>, key: TabKey) {
         this.setState({
             zones: this.state.zones.setActiveTab(key),
             mouse: this.state.mouse.start(key, e.clientX, e.clientY, this.tabElements)
+        })
+        e.preventDefault()
+    }
+
+    onTabTouchStart(e: React.TouchEvent<any>, key: TabKey) {
+        const touch = e.targetTouches.item(0)
+        this.setState({
+            zones: this.state.zones.setActiveTab(key),
+            mouse: this.state.mouse.start(key, touch.clientX, touch.clientY, this.tabElements)
         })
         e.preventDefault()
     }
