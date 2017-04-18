@@ -47,7 +47,7 @@ export class MouseInteractions {
         if (!dragging) { return this }
 
         const tabOverZone = this.zoneUnderDraggedTab(zoneTabAreas, tabs)
-        const hoverPosition = tabOverZone !== undefined ? this.hoverPosition(x, y, tabOverZone, tabs, zones) : undefined
+        const hoverPosition = tabOverZone !== undefined ? this.calculateHoverPosition(x, y, tabOverZone, tabs, zones) : undefined
 
         const start = this.data.touchStart
         return new MouseInteractions({
@@ -97,7 +97,7 @@ export class MouseInteractions {
         return this.data.dragging && this.data.tabDown === key
     }
 
-    hoverPosition(x: number, y: number, zoneIndex: number, tabs: TabElements, zones: Zones): number|undefined {
+    calculateHoverPosition(x: number, y: number, zoneIndex: number, tabs: TabElements, zones: Zones): number|undefined {
         if (!this.data.dragging) { return undefined }
         const draggedTabRect = tabs[this.data.tabDown!].getBoundingClientRect()
 

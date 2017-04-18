@@ -16,7 +16,10 @@ export interface Zone {
 
 export const LastPosition = -1
 
-/** Performs the immutable updates to zones. */
+/**
+ * Performs the immutable updates to zones. The data here represents the "written" state of tabs and zones,
+ * not taking into account any intermediate dragging and other UI interactions (see `MouseInteractions` for that).
+ */
 export class Zones {
     constructor(public data: Zone[] = []) { }
 
@@ -105,7 +108,7 @@ export class Zones {
             nextTabs.splice(oldPosition, 1)
         }
         nextTabs.splice(realPosition, 0, key)
-        
+
         nextZones[newZoneIndex] = {
             activeKey: newZone.activeKey,
             tabs: nextTabs,

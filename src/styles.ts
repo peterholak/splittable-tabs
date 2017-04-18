@@ -36,6 +36,12 @@ const styles: {[key: string]: React.CSSProperties} = {
 
     hoverZone: {
         background: '#cfc'
+    },
+
+    dropArea: {
+        display: 'inline-block',
+        verticalAlign: 'bottom',
+        background: '#ccf'
     }
 }
 

@@ -49,26 +49,54 @@ export class SplittableTabs extends React.Component<Props, State> {
         </div>
     }
 
-    renderZone(tabsByKey: TabsByKey, zone: Zone, index: number) {
-        const tabs = zone.tabs.map(key => this.renderTab(
-            tabsByKey[key].title,
-            zone,
-            index,
-            key
-        ))
+    renderZone(tabsByKey: TabsByKey, zone: Zone, zoneIndex: number) {
+        const tabs = zone.tabs.map((key, position) => {
+            const [ before, after ] = this.renderDropAreas(zoneIndex, zone, position, key)
+            return [ before, this.renderTab(tabsByKey[key].title, zone, zoneIndex, key), after ]
+        })
         const style = { ...styles.borders, ...styles.zone, flexGrow: zone.sizePercent }
         const tabBarStyle = {
             ...styles.borders,
-            ...(this.state.mouse.data.tabOverZone === index ? styles.hoverZone : undefined)
+            ...(this.state.mouse.data.tabOverZone === zoneIndex ? styles.hoverZone : undefined)
         }
         const contents = tabsByKey[zone.activeKey].children
-        return <div key={index} style={style}>
-            <h3>Zone {index}</h3>
-            <div ref={area => area ? this.zoneTabArea[index] = area : delete this.zoneTabArea[index]} style={tabBarStyle}>
+        return <div key={zoneIndex} style={style}>
+            <h3>Zone {zoneIndex}</h3>
+            <div ref={area => area ? this.zoneTabArea[zoneIndex] = area : delete this.zoneTabArea[zoneIndex]} style={tabBarStyle}>
                 {tabs}
             </div>
             <div style={styles.borders}>{contents}</div>
         </div>
+    }
+
+    renderDropAreas(
+        zoneIndex: number,
+        zone: Zone,
+        tabPosition: number,
+        tabKey: TabKey
+    ): [ JSX.Element|undefined, JSX.Element|undefined ] {
+        let before: JSX.Element|undefined, after: JSX.Element|undefined
+        const mouse = this.state.mouse.data
+        const zones = this.state.zones
+        
+        if (mouse.dragging && zoneIndex === mouse.tabOverZone && mouse.hoverPosition !== undefined) {
+            const tabFromSameZone = zones.indexForTab(mouse.tabDown!) === zoneIndex
+            let extra = 0, skipHighlight = false
+            if (tabFromSameZone) {
+                const draggedPosition = zones.positionOfTab(zoneIndex, mouse.tabDown!)
+                extra = (tabPosition >= draggedPosition ? 1 : 0)
+            }
+
+            if (tabPosition === mouse.hoverPosition + extra && tabKey !== mouse.tabDown) {
+                const draggedTabRect = this.tabElements[mouse.tabDown!].getBoundingClientRect()
+                before = <div style={{ ...styles.dropArea, width: draggedTabRect.width, height: draggedTabRect.height }} />
+            }
+            if (tabPosition === zone.tabs.length - 1 && mouse.hoverPosition === zone.tabs.length - extra) {
+                const draggedTabRect = this.tabElements[mouse.tabDown!].getBoundingClientRect()
+                after = <div style={{ ...styles.dropArea, width: draggedTabRect.width, height: draggedTabRect.height }} />
+            }
+        }
+        return [ before, after ]
     }
 
     renderTab(title: string, zone: Zone, zoneIndex: number, key: TabKey) {
@@ -97,7 +125,6 @@ export class SplittableTabs extends React.Component<Props, State> {
         >
             {title} {this.renderTabOperations(zone, zoneIndex, key)}
         </div>
-
     }
 
     renderTabOperations(zone: Zone, zoneIndex: number, key: TabKey) {
