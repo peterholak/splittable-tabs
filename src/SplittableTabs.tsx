@@ -130,6 +130,7 @@ export class SplittableTabs extends React.Component<Props, State> {
             style={style}
             onMouseDown={(e) => this.onTabMouseDown(e, key)}
             onTouchStart={(e) => this.onTabTouchStart(e, key)}
+            onTouchMove={e => e.preventDefault()} // prevents pull-to-refresh among other things
         >
             {title} {this.renderTabOperations(zone, zoneIndex, key)}
         </div>
@@ -158,7 +159,7 @@ export class SplittableTabs extends React.Component<Props, State> {
     }
 
     onComponentTouchMove(e: React.TouchEvent<any>) {
-        const touch = e.changedTouches.item(0)
+        const touch = e.touches.item(0)
         this.setState({
             mouse: this.state.mouse.move(
                 touch.clientX, touch.clientY, this.zoneTabArea, this.tabElements, this.state.zones
