@@ -3,7 +3,8 @@ const styles: {[key: string]: React.CSSProperties} = {
         display: 'inline-block',
         padding: '10px',
         cursor: 'pointer',
-        userSelect: 'none'
+        userSelect: 'none',
+        touchAction: 'none'
     },
 
     pressedTab: {
