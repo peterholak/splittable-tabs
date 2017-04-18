@@ -75,27 +75,31 @@ export class SplittableTabs extends React.Component<Props, State> {
         tabPosition: number,
         tabKey: TabKey
     ): [ JSX.Element|undefined, JSX.Element|undefined ] {
-        let before: JSX.Element|undefined, after: JSX.Element|undefined
-        const mouse = this.state.mouse.data
-        const zones = this.state.zones
-        
-        if (mouse.dragging && zoneIndex === mouse.tabOverZone && mouse.hoverPosition !== undefined) {
-            const tabFromSameZone = zones.indexForTab(mouse.tabDown!) === zoneIndex
-            let extra = 0, skipHighlight = false
-            if (tabFromSameZone) {
-                const draggedPosition = zones.positionOfTab(zoneIndex, mouse.tabDown!)
-                extra = (tabPosition >= draggedPosition ? 1 : 0)
-            }
 
-            if (tabPosition === mouse.hoverPosition + extra && tabKey !== mouse.tabDown) {
-                const draggedTabRect = this.tabElements[mouse.tabDown!].getBoundingClientRect()
-                before = <div style={{ ...styles.dropArea, width: draggedTabRect.width, height: draggedTabRect.height }} />
-            }
-            if (tabPosition === zone.tabs.length - 1 && mouse.hoverPosition === zone.tabs.length - extra) {
-                const draggedTabRect = this.tabElements[mouse.tabDown!].getBoundingClientRect()
-                after = <div style={{ ...styles.dropArea, width: draggedTabRect.width, height: draggedTabRect.height }} />
-            }
+        const mouse = this.state.mouse.data
+        if (!mouse.dragging || zoneIndex !== mouse.tabOverZone || mouse.hoverPosition === undefined) {
+            return [ undefined, undefined ]
         }
+
+        let before: JSX.Element|undefined, after: JSX.Element|undefined
+        const zones = this.state.zones
+
+        const tabFromSameZone = zones.indexForTab(mouse.tabDown!) === zoneIndex
+        let selfPositionOffset = 0, skipHighlight = false
+        if (tabFromSameZone) {
+            const draggedPosition = zones.positionOfTab(zoneIndex, mouse.tabDown!)
+            selfPositionOffset = (tabPosition >= draggedPosition ? 1 : 0)
+        }
+
+        if (tabPosition === mouse.hoverPosition + selfPositionOffset && tabKey !== mouse.tabDown) {
+            const draggedTabRect = this.tabElements[mouse.tabDown!].getBoundingClientRect()
+            before = <div style={{ ...styles.dropArea, width: draggedTabRect.width, height: draggedTabRect.height }} />
+        }
+        if (tabPosition === zone.tabs.length - 1 && mouse.hoverPosition === zone.tabs.length - selfPositionOffset) {
+            const draggedTabRect = this.tabElements[mouse.tabDown!].getBoundingClientRect()
+            after = <div style={{ ...styles.dropArea, width: draggedTabRect.width, height: draggedTabRect.height }} />
+        }
+
         return [ before, after ]
     }
 
