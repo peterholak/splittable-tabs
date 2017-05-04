@@ -6,14 +6,24 @@ import styles from './styles'
 export const Tab = (props: TabProps) => <div />
 
 export interface Props {
-    children?: React.ReactNode,
+    children?: React.ReactNode
     style?: React.CSSProperties
+    zones?: Zones
+    debugColor?: string
+    onRecalculated?: ZoneListener
+    onTabChanged?: TabListener
+    onTabSplitOff?: TabListener
+    onTabRepositioned?: TabListener
+    onAnyZoneChange?: ZoneListener
 }
 
 export interface State {
-    zones: Zones,
+    zones: Zones
     mouse: MouseInteractions
 }
+
+export type ZoneListener = (newZones: Zones) => void
+export type TabListener = (tabKey: TabKey, newZones: Zones) => void
 
 export class SplittableTabs extends React.Component<Props, State> {
 
@@ -26,12 +36,35 @@ export class SplittableTabs extends React.Component<Props, State> {
 
     componentWillMount() {
         const tabsByKey = this.getTabsByKey(this.props.children)
-        this.setState({ zones: this.state.zones.recalculate(tabsByKey) })
+        const newZones = this.zones().recalculate(tabsByKey)
+
+        if (this.zones() === newZones) { return }
+
+        if (!this.isControlled()) {
+            this.setState({ zones: newZones })
+        }
+        this.props.onRecalculated && this.props.onRecalculated(newZones)
+        this.props.onAnyZoneChange && this.props.onAnyZoneChange(newZones)
     }
 
     componentWillReceiveProps(nextProps: Props) {
+        if (
+            this.props.zones === nextProps.zones &&
+            this.props.children === nextProps.children
+        ) {
+            return
+        }
+
         const tabsByKey = this.getTabsByKey(nextProps.children)
-        this.setState({ zones: this.state.zones.recalculate(tabsByKey)})
+        const newZones = this.zones().recalculate(tabsByKey)
+
+        if (this.zones() === newZones) { return }
+
+        if (!this.isControlled()) {
+            this.setState({ zones: newZones })
+        }
+        this.props.onRecalculated && this.props.onRecalculated(newZones)
+        this.props.onAnyZoneChange && this.props.onAnyZoneChange(newZones)
     }
 
     render() {
@@ -44,9 +77,9 @@ export class SplittableTabs extends React.Component<Props, State> {
             onTouchMove={this.onComponentTouchMove.bind(this)}
             onTouchEnd={this.onComponentTouchEnd.bind(this)}
             onTouchCancel={this.onComponentTouchEnd.bind(this)}
-            style={{ ...styles.borders, ...styles.component, ...this.props.style }}
+            style={{ ...this.debugBorders(), ...styles.component, ...this.props.style }}
         >
-            {this.state.zones.data.map((z, index) =>
+            {this.zones().data.map((z, index) =>
                 this.renderZone(tabsByKey, z, index))
             }
         </div>
@@ -57,9 +90,9 @@ export class SplittableTabs extends React.Component<Props, State> {
             const [ before, after ] = this.renderDropAreas(zoneIndex, zone, position, key)
             return [ before, this.renderTab(tabsByKey[key].title, zone, zoneIndex, key), after ]
         })
-        const style = { ...styles.borders, ...styles.zone, flexGrow: zone.sizePercent }
+        const style = { ...this.debugBorders(), ...styles.zone, flexGrow: zone.sizePercent }
         const tabBarStyle = {
-            ...styles.borders,
+            ...this.debugBorders(),
             ...(this.state.mouse.data.tabOverZone === zoneIndex ? styles.hoverZone : undefined)
         }
         const contents = tabsByKey[zone.activeKey].children
@@ -85,7 +118,7 @@ export class SplittableTabs extends React.Component<Props, State> {
         }
 
         let before: JSX.Element|undefined, after: JSX.Element|undefined
-        const zones = this.state.zones
+        const zones = this.zones()
 
         const tabFromSameZone = zones.indexForTab(mouse.tabDown!) === zoneIndex
         let selfPositionOffset = 0, skipHighlight = false
@@ -154,7 +187,7 @@ export class SplittableTabs extends React.Component<Props, State> {
 
     onComponentMouseMove(e: React.MouseEvent<any>) {
         this.setState({ mouse: this.state.mouse.move(
-            e.clientX, e.clientY, this.zoneTabArea, this.tabElements, this.state.zones
+            e.clientX, e.clientY, this.zoneTabArea, this.tabElements, this.zones()
         ) })
     }
 
@@ -162,7 +195,7 @@ export class SplittableTabs extends React.Component<Props, State> {
         const touch = e.touches.item(0)
         this.setState({
             mouse: this.state.mouse.move(
-                touch.clientX, touch.clientY, this.zoneTabArea, this.tabElements, this.state.zones
+                touch.clientX, touch.clientY, this.zoneTabArea, this.tabElements, this.zones()
             )
         })
     }
@@ -172,11 +205,18 @@ export class SplittableTabs extends React.Component<Props, State> {
             const zoneIndex = this.state.mouse.data.tabOverZone
             const position = this.state.mouse.data.hoverPosition!
             const tabKey = this.state.mouse.data.tabDown!
-            this.setState({
-                zones: this.state.zones.
-                    mergeInto(zoneIndex, tabKey, position).
-                    setActiveTab(tabKey)
-            })
+            
+            const newZones = this.zones().
+                mergeInto(zoneIndex, tabKey, position).
+                setActiveTab(tabKey)
+
+            if (newZones !== this.zones()) {
+                if (!this.isControlled()) {
+                    this.setState({ zones: newZones })
+                }
+                this.props.onTabRepositioned && this.props.onTabRepositioned(tabKey, newZones)
+                this.props.onAnyZoneChange && this.props.onAnyZoneChange(newZones)
+            }
         }
         this.setState({ mouse: new MouseInteractions() })
     }
@@ -186,24 +226,45 @@ export class SplittableTabs extends React.Component<Props, State> {
     }
 
     onTabMouseDown(e: React.MouseEvent<any>, key: TabKey) {
-        this.setState({
-            zones: this.state.zones.setActiveTab(key),
-            mouse: this.state.mouse.start(key, e.clientX, e.clientY, this.tabElements)
-        })
+        const newZones = this.zones().setActiveTab(key)
+
+        if (newZones !== this.zones()) {
+            if (!this.isControlled()) {
+                this.setState({ zones: newZones })
+            }
+            this.props.onTabChanged && this.props.onTabChanged(key, newZones)
+            this.props.onAnyZoneChange && this.props.onAnyZoneChange(newZones)
+        }
+
+        this.setState({ mouse: this.state.mouse.start(key, e.clientX, e.clientY, this.tabElements) })
         e.preventDefault()
     }
 
     onTabTouchStart(e: React.TouchEvent<any>, key: TabKey) {
         const touch = e.targetTouches.item(0)
-        this.setState({
-            zones: this.state.zones.setActiveTab(key),
-            mouse: this.state.mouse.start(key, touch.clientX, touch.clientY, this.tabElements)
-        })
+        const newZones = this.zones().setActiveTab(key)
+
+        if (newZones !== this.zones()) {
+            if (!this.isControlled()) {
+                this.setState({ zones: newZones })
+            }
+            this.props.onTabChanged && this.props.onTabChanged(key, newZones)
+            this.props.onAnyZoneChange && this.props.onAnyZoneChange(newZones)
+        }
+        
+        this.setState({ mouse: this.state.mouse.start(key, touch.clientX, touch.clientY, this.tabElements) })
         e.preventDefault()
     }
 
     onSplitClicked(e: React.MouseEvent<any>, key: TabKey) {
-        this.setState({ zones: this.state.zones.splitOff(key) })
+        const newZones = this.zones().splitOff(key)
+
+        if (!this.isControlled()) {
+            this.setState({ zones: newZones })
+        }
+        this.props.onTabSplitOff && this.props.onTabSplitOff(key, newZones)
+        this.props.onAnyZoneChange && this.props.onAnyZoneChange(newZones)
+
         e.stopPropagation()
     }
 
@@ -217,5 +278,17 @@ export class SplittableTabs extends React.Component<Props, State> {
                 }
             })
         return sectionsByKey
+    }
+
+    isControlled() {
+        return this.props.zones !== undefined
+    }
+
+    zones() { 
+        return this.props.zones || this.state.zones
+    }
+
+    debugBorders() { 
+        return { border: '1px dotted ' + (this.props.debugColor || '#ccc') }
     }
 }

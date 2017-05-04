@@ -32,6 +32,8 @@ export class Zones {
         const newTabs = this.tabsWithoutZones(Object.keys(tabsByKey))
         const nextZones: Zone[] = []
 
+        let anythingChanged = false
+
         this.data.forEach((zone, index) => {
             // Tabs which no longer exist in nextProps.children will be filtered out.
             const withoutDeadTabs = zone.tabs.filter(key => tabsByKey[key] !== undefined)
@@ -42,6 +44,7 @@ export class Zones {
             if (addedTabs.length === 0 && withoutDeadTabs.length === zone.tabs.length) {
                 nextZones[index] = zone
             }else if (addedTabs.length + withoutDeadTabs.length > 0) {
+                anythingChanged = true
                 nextZones[index] = {
                     activeKey: zone.activeKey,
                     tabs: [...withoutDeadTabs, ...addedTabs],
@@ -53,8 +56,12 @@ export class Zones {
 
         // If there were zero zones before, let's just create a new one with all the new tabs (if any).
         if (nextZones.length === 0 && newTabs.length > 0) {
+            anythingChanged = true;
             nextZones.push({ activeKey: newTabs[0], tabs: newTabs, sizePercent: 100 })
         }
+
+        // TODO: test for the fact that the same object is returned when nothing has changed
+        if (!anythingChanged) { return this }
 
         return new Zones(nextZones)
     }
@@ -154,8 +161,11 @@ export class Zones {
 
     setActiveTab(key: TabKey): Zones {
         const zoneIndex = this.indexForTab(key)
-        const nextZones = [ ...this.data ]
         const zone = this.data[zoneIndex]
+
+        if (zone.activeKey === key) { return this }
+
+        const nextZones = [ ...this.data ]
         nextZones[zoneIndex] = {
             activeKey: key,
             tabs: zone.tabs,
