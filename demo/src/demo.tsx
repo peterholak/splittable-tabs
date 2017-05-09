@@ -8,13 +8,15 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 interface State {
-    controlledZones: Zones
+    controlledZones: Zones,
+    savedTabs: Zones
 }
 
 class Demo extends React.Component<{}, State> {
 
     state: State = {
-        controlledZones: new Zones()
+        controlledZones: new Zones(),
+        savedTabs: new Zones()
     }
 
     render() {
@@ -38,7 +40,14 @@ class Demo extends React.Component<{}, State> {
                     <Tab title="Tab C 3" eventKey={3}>
                     </Tab>
                 </SplittableTabs>
-                TODO: Save, Restore buttons to demonstrate manual state changes
+                <div>
+                    <input type="button" value="Save" onClick={this.onControlledTabsSave.bind(this)} />
+                    <input type="button" value="Restore" onClick={this.onControlledTabsRestore.bind(this)} />
+                    <div>
+                        Saved state:
+                        {JSON.stringify(this.state.savedTabs)}
+                    </div>
+                </div>
             </Tab>
             <Tab title="Custom elements" eventKey={3} key={3}>
                 <SplittableTabs style={{ width: 500, height: 500 }} debugColor='#0f0' key={3}>
@@ -53,6 +62,14 @@ class Demo extends React.Component<{}, State> {
 
     onControlledZoneChanged(newZones: Zones) {
         this.setState({ controlledZones: newZones })
+    }
+
+    onControlledTabsSave() {
+        this.setState({ savedTabs: this.state.controlledZones })
+    }
+
+    onControlledTabsRestore() {
+        this.setState({ controlledZones: this.state.savedTabs })
     }
 
 }
